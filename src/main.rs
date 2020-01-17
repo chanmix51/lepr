@@ -1,3 +1,8 @@
+extern crate ansi_term;
+
+use ansi_term::Colour;
+use ansi_term::Style;
+
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
@@ -14,22 +19,39 @@ use rustyline::Editor;
 #[grammar = "boolean_expression.pest"]
 pub struct BEParser;
 
+pub struct LogicalDecoder {}
+
+impl LogicalDecoder {
+    pub fn new() -> LogicalDecoder {
+        LogicalDecoder {}
+    }
+
+    pub fn solve(&self) -> bool {
+        true
+    }
+}
+
 fn main() {
+    println!("{}", Colour::Green.paint("Welcome in Lepr 0.0.1"));
+    let prompt = format!("{}", Colour::Yellow.paint(">> "));
     let mut rl = Editor::<()>::new();
     loop {
-        let readline = rl.readline(">> ");
+        let readline = rl.readline(&prompt);
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                println!("{:?}", BEParser::parse(Rule::boolex, line.as_str()));
-            },
+                println!(
+                    "{:?}",
+                    BEParser::parse(Rule::boolean_expression, line.as_str())
+                );
+            }
             Err(ReadlineError::Eof) => {
                 println!("Quit!");
-                break
-            },
+                break;
+            }
             Err(err) => {
                 println!("Error: {:?}", err);
-                break
+                break;
             }
         }
     }

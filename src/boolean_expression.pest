@@ -1,0 +1,19 @@
+sentence = _{ SOI ~ WHITE_SPACE* ~ boolean_expression ~ WHITE_SPACE* ~ EOI }
+
+boolean_expression = { boolean | statement }
+
+boolean = { "true" | "false" }
+
+statement = _{ expression | boolean_expression ~ WHITE_SPACE* ~ bool_operation ~ WHITE_SPACE* ~ boolean_expression }
+expression = { location16 ~ WHITE_SPACE* ~ operation ~ WHITE_SPACE* ~ value16 | location8 ~ WHITE_SPACE* ~ operation ~ WHITE_SPACE* ~ value8 }
+location16 = _{ register16_location }
+location8 = _{  memory_location | register8_location }
+
+memory_location = { "#0x" ~ ASCII_HEX_DIGIT{4} }
+register16_location = { "CP" }
+register8_location = { "A" | "X" | "Y" | "S" }
+value16 = { "0x" ~ ASCII_HEX_DIGIT{4} }
+value8 = { "0x" ~ ASCII_HEX_DIGIT{2} | "0b" ~ ASCII_BIN_DIGIT{8} }
+
+operation = { "=" | ">" | "<" | ">=" | "<=" }
+bool_operation = { "&" | "|" }

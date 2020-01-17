@@ -1,0 +1,36 @@
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
+
+use pest::error::Error as PestError;
+use pest::Parser;
+
+extern crate rustyline;
+
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
+
+#[derive(Parser)]
+#[grammar = "boolean_expression.pest"]
+pub struct BEParser;
+
+fn main() {
+    let mut rl = Editor::<()>::new();
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str());
+                println!("{:?}", BEParser::parse(Rule::boolex, line.as_str()));
+            },
+            Err(ReadlineError::Eof) => {
+                println!("Quit!");
+                break
+            },
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break
+            }
+        }
+    }
+}

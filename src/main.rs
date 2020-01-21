@@ -56,3 +56,15 @@ fn main() {
         }
     }
 }
+
+struct StopCondition {
+     solver: Box<dyn Fn(val: i32) -> bool>,
+}
+
+/*
+impl StopCondition {
+    pub fn new(pair: Pair) -> StopCondition {
+
+    }
+}
+*/

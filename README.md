@@ -11,16 +11,16 @@ Ok(
             span: Span { str: "A > 0x12", start: 0, end: 8 },
             inner: [
                 Pair {
-                    rule: expression,
+                    rule: operation,
                     span: Span { str: "A > 0x12", start: 0, end: 8 },
                     inner: [
                         Pair {
-                            rule: register8_location,
+                            rule: register8,
                             span: Span { str: "A", start: 0, end: 1 },
                             inner: []
                             },
                         Pair {
-                            rule: operation,
+                            rule: operator,
                             span: Span { str: ">", start: 2, end: 3 },
                             inner: []
                         },

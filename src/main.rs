@@ -8,6 +8,7 @@ extern crate pest;
 extern crate pest_derive;
 
 use pest::error::Error as PestError;
+use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 
 extern crate rustyline;
@@ -90,6 +91,9 @@ impl BooleanExpression {
 }
 
 fn main() {
+    let mut registers = Registers::new(0x1000);
+    let mut memory:Vec<u8> = vec![0x00; 64 * 1024];
+    registers.accumulator = 0x12;
     println!("{}", Colour::Green.paint("Welcome in Lepr 0.0.1"));
     let prompt = format!("{}", Colour::Yellow.paint(">> "));
     let mut rl = Editor::<()>::new();
@@ -98,10 +102,12 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
-                println!(
-                    "{:?}",
-                    BEParser::parse(Rule::boolean_expression, line.as_str())
-                );
+                if let Ok(mut pairs) = BEParser::parse(Rule::boolean_expression, line.as_str()) {
+                    let response = parse(pairs.next().unwrap().into_inner());
+                    println!("Validating 0x12 on accumulator: {:?}", response.solve(&registers, &memory));
+                } else {
+                    println!("syntax error");
+                };
             }
             Err(ReadlineError::Eof) => {
                 println!("Quit!");
@@ -115,22 +121,26 @@ fn main() {
     }
 }
 
-pub fn parse(rule: Pair, line: &str) -> BooleanExpression {
-    match rule.inner[0].rule {
-        "boolean" => BooleanExpression::Value(rule.inner[0].span.str == "true"),
-        "operation" => parse_operation(rule.inner[0].inner),
-        smt   => panic!("unknown node type '{}'.", smt),
+pub fn parse(mut nodes: Pairs<Rule>) -> BooleanExpression {
+    let node = nodes.next().unwrap();
+    match node.as_rule() {
+        Rule::boolean   => BooleanExpression::Value(node.as_str() == "true"),
+        Rule::operation => parse_operation(node.into_inner()),
+        smt   => panic!("unknown node type '{:?}'.", smt),
     }
 }
 
-fn parse_operation(nodes: [Pair; 3]) -> BooleanExpression {
-    let lh_rule_name = nodes[0].rule;
-    let lh = match lh_rule_name {
-        "register8" => parse_register(&nodes[0]),
-        "memory"    => parse_memory(&nodes[0]),
+fn parse_operation(mut nodes: Pairs<Rule>) -> BooleanExpression {
+    let node = nodes.next().unwrap();
+    let lh = match node.as_rule() {
+        Rule::register8 => parse_register(&node),
+        Rule::memory    => parse_memory(&node),
+        v               => panic!("unexpected node '{:?}' here.", v),
     };
-    let rh = parse_value8(&nodes[2].span.str);
-    match nodes[1].span.str {
+    let middle_node = nodes.next().unwrap();
+    let node = nodes.next().unwrap();
+    let rh = parse_value8(&node);
+    match middle_node.as_str() {
         "="     => BooleanExpression::Equal(lh, rh),
         ">="    => BooleanExpression::GreaterOrEqual(lh, rh),
         ">"     => BooleanExpression::StrictlyGreater(lh, rh),
@@ -141,8 +151,8 @@ fn parse_operation(nodes: [Pair; 3]) -> BooleanExpression {
     }
 }
 
-fn parse_register(node: &Pair) -> Source8 {
-    match *node.span.str {
+fn parse_register(node: &Pair<Rule>) -> Source8 {
+    match node.as_str() {
         "A" => Source8::Accumulator,
         "X" => Source8::RegisterX,
         "Y" => Source8::RegisterY,
@@ -152,19 +162,21 @@ fn parse_register(node: &Pair) -> Source8 {
     }
 }
 
-fn parse_memory(node: &Pair) -> Source8 {
-    let bytes = hex::decode(node.span.str).unwrap();
+fn parse_memory(node: &Pair<Rule>) -> Source8 {
+    let addr = node.as_str()[3..].to_owned();
+    let bytes = hex::decode(addr).unwrap();
     let mut addr:usize = 0;
 
     for byte in bytes.iter() {
-        addr = addr << 8 | ( byte as usize);
+        addr = addr << 8 | ( *byte as usize);
     }
 
     Source8::Memory(addr)
 }
 
-fn parse_value8(node: &Pair) -> u8 {
-    let val = hex::decode(node.span.str[2..]).unwrap();
+fn parse_value8(node: &Pair<Rule>) -> u8 {
+    let hexa = node.as_str()[2..].to_owned();
+    let val = hex::decode(hexa).unwrap();
 
     val[0] as u8
 }

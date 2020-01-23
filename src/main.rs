@@ -56,10 +56,10 @@ impl Source8 {
     pub fn get_value(&self, registers: &Registers, memory: &Vec<u8>) -> u8 {
         match *self {
             Source8::Accumulator => registers.accumulator,
-            Source8::RegisterX   => registers.register_x,
-            Source8::RegisterY   => registers.register_y,
-            Source8::RegisterSP  => registers.status_register,
-            Source8::RegisterS   => registers.stack_pointer,
+            Source8::RegisterX => registers.register_x,
+            Source8::RegisterY => registers.register_y,
+            Source8::RegisterSP => registers.status_register,
+            Source8::RegisterS => registers.stack_pointer,
             Source8::Memory(addr) => memory[addr],
         }
     }
@@ -79,20 +79,31 @@ pub enum BooleanExpression {
 impl BooleanExpression {
     pub fn solve(&self, registers: &Registers, memory: &Vec<u8>) -> bool {
         match &*self {
-            BooleanExpression::Equal(source, val)   => source.get_value(registers, memory) == *val,
-            BooleanExpression::GreaterOrEqual(source, val)   => source.get_value(registers, memory) >= *val,
-            BooleanExpression::StrictlyGreater(source, val)   => source.get_value(registers, memory) > *val,
-            BooleanExpression::LesserOrEqual(source, val)   => source.get_value(registers, memory) <= *val,
-            BooleanExpression::StrictlyLesser(source, val)   => source.get_value(registers, memory) < *val,
-            BooleanExpression::Different(source, val)   => source.get_value(registers, memory) != *val,
-            BooleanExpression::Value(val)    => *val,
+            BooleanExpression::Equal(source, val) => source.get_value(registers, memory) == *val,
+            BooleanExpression::GreaterOrEqual(source, val) => {
+                source.get_value(registers, memory) >= *val
+            }
+            BooleanExpression::StrictlyGreater(source, val) => {
+                source.get_value(registers, memory) > *val
+            }
+            BooleanExpression::LesserOrEqual(source, val) => {
+                source.get_value(registers, memory) <= *val
+            }
+            BooleanExpression::StrictlyLesser(source, val) => {
+                source.get_value(registers, memory) < *val
+            }
+            BooleanExpression::Different(source, val) => {
+                source.get_value(registers, memory) != *val
+            }
+            BooleanExpression::Value(val) => *val,
         }
     }
 }
 
 fn main() {
     let mut registers = Registers::new(0x1000);
-    let mut memory:Vec<u8> = vec![0x00; 64 * 1024];
+    let mut memory: Vec<u8> = vec![0x00; 64 * 1024];
+    memory[0x1234] = 0x12;
     registers.accumulator = 0x12;
     println!("{}", Colour::Green.paint("Welcome in Lepr 0.0.1"));
     let prompt = format!("{}", Colour::Yellow.paint(">> "));
@@ -104,7 +115,8 @@ fn main() {
                 rl.add_history_entry(line.as_str());
                 if let Ok(mut pairs) = BEParser::parse(Rule::boolean_expression, line.as_str()) {
                     let response = parse(pairs.next().unwrap().into_inner());
-                    println!("Validating 0x12 on accumulator: {:?}", response.solve(&registers, &memory));
+                    println!("{:?}", response);
+                    println!("Validating: {:?}", response.solve(&registers, &memory));
                 } else {
                     println!("syntax error");
                 };
@@ -124,9 +136,9 @@ fn main() {
 pub fn parse(mut nodes: Pairs<Rule>) -> BooleanExpression {
     let node = nodes.next().unwrap();
     match node.as_rule() {
-        Rule::boolean   => BooleanExpression::Value(node.as_str() == "true"),
+        Rule::boolean => BooleanExpression::Value(node.as_str() == "true"),
         Rule::operation => parse_operation(node.into_inner()),
-        smt   => panic!("unknown node type '{:?}'.", smt),
+        smt => panic!("unknown node type '{:?}'.", smt),
     }
 }
 
@@ -134,20 +146,20 @@ fn parse_operation(mut nodes: Pairs<Rule>) -> BooleanExpression {
     let node = nodes.next().unwrap();
     let lh = match node.as_rule() {
         Rule::register8 => parse_register(&node),
-        Rule::memory    => parse_memory(&node),
-        v               => panic!("unexpected node '{:?}' here.", v),
+        Rule::memory => parse_memory(&node),
+        v => panic!("unexpected node '{:?}' here.", v),
     };
     let middle_node = nodes.next().unwrap();
     let node = nodes.next().unwrap();
     let rh = parse_value8(&node);
     match middle_node.as_str() {
-        "="     => BooleanExpression::Equal(lh, rh),
-        ">="    => BooleanExpression::GreaterOrEqual(lh, rh),
-        ">"     => BooleanExpression::StrictlyGreater(lh, rh),
-        "<="    => BooleanExpression::LesserOrEqual(lh, rh),
-        "<"     => BooleanExpression::StrictlyLesser(lh, rh),
-        "!="    => BooleanExpression::Different(lh, rh),
-        v       => panic!("unknown 8 bits provider {:?}", v),
+        "=" => BooleanExpression::Equal(lh, rh),
+        ">=" => BooleanExpression::GreaterOrEqual(lh, rh),
+        ">" => BooleanExpression::StrictlyGreater(lh, rh),
+        "<=" => BooleanExpression::LesserOrEqual(lh, rh),
+        "<" => BooleanExpression::StrictlyLesser(lh, rh),
+        "!=" => BooleanExpression::Different(lh, rh),
+        v => panic!("unknown 8 bits provider {:?}", v),
     }
 }
 
@@ -158,17 +170,17 @@ fn parse_register(node: &Pair<Rule>) -> Source8 {
         "Y" => Source8::RegisterY,
         "S" => Source8::RegisterS,
         "SP" => Source8::RegisterSP,
-        v   => panic!("unknown register type '{:?}'.", v),
+        v => panic!("unknown register type '{:?}'.", v),
     }
 }
 
 fn parse_memory(node: &Pair<Rule>) -> Source8 {
     let addr = node.as_str()[3..].to_owned();
     let bytes = hex::decode(addr).unwrap();
-    let mut addr:usize = 0;
+    let mut addr: usize = 0;
 
     for byte in bytes.iter() {
-        addr = addr << 8 | ( *byte as usize);
+        addr = addr << 8 | (*byte as usize);
     }
 
     Source8::Memory(addr)

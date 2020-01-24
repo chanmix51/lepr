@@ -1,7 +1,6 @@
 extern crate ansi_term;
 
 use ansi_term::Colour;
-use ansi_term::Style;
 
 extern crate pest;
 #[macro_use]
@@ -131,11 +130,7 @@ fn display_error<T>(line: &String, err: PestError<T>) {
 }
 
 fn main() {
-    let mut registers = Registers::new(0x1000);
-    let mut memory: Vec<u8> = vec![0x00; 64 * 1024];
-    memory[0x1234] = 0x12;
-    registers.accumulator = 0x12;
-    println!("{}", Colour::Green.paint("Welcome in Lepr 0.0.1"));
+    println!("{}", Colour::Green.paint("Welcome in Lepr 0.1.0"));
     let prompt = format!("{}", Colour::Yellow.paint(">> "));
     let mut rl = Editor::<()>::new();
     loop {
@@ -148,9 +143,8 @@ fn main() {
                 rl.add_history_entry(line.as_str());
                 match BEParser::parse(Rule::boolean_expression, line.as_str()) {
                     Ok(mut pairs)   => {
-                        let response = parse(pairs.next().unwrap().into_inner());
+                        let response = parse_boolex(pairs.next().unwrap().into_inner());
                         println!("{:?}", response);
-                        println!("Validating: {:?}", response.solve(&registers, &memory));
                     },
                     Err(parse_err)    => display_error(&line, parse_err),
                 };
@@ -167,7 +161,7 @@ fn main() {
     }
 }
 
-pub fn parse(mut nodes: Pairs<Rule>) -> BooleanExpression {
+pub fn parse_boolex(mut nodes: Pairs<Rule>) -> BooleanExpression {
     let node = nodes.next().unwrap();
     match node.as_rule() {
         Rule::boolean => BooleanExpression::Value(node.as_str() == "true"),

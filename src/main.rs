@@ -100,6 +100,36 @@ impl BooleanExpression {
     }
 }
 
+fn get_type_of<T>(_: &T) -> String {
+    format!("{}", std::any::type_name::<T>())
+}
+
+fn display_error<T>(line: &String, err: PestError<T>) {
+    let (mark_str, msg) = match err.location {
+        pest::error::InputLocation::Pos(x)  => {
+            let mut pos_str = String::new();
+            for _ in 0..x { pos_str.push(' '); }
+            pos_str.push('↑');
+
+            (pos_str, format!("at position {}", x))
+        },
+        pest::error::InputLocation::Span((a, b)) => {
+            let mut pos_str = String::new();
+            for _ in 0..a { pos_str.push(' '); }
+            pos_str.push('↑');
+            for _ in a..b { pos_str.push(' '); }
+            pos_str.push('↑');
+            (pos_str, format!("somewhere between position {} and {}", a, b))
+        },
+    };
+    println!(
+        "Syntax error:\n{}.\n{}\n{}",
+        line,
+        mark_str,
+        msg
+    );
+}
+
 fn main() {
     let mut registers = Registers::new(0x1000);
     let mut memory: Vec<u8> = vec![0x00; 64 * 1024];
@@ -112,15 +142,19 @@ fn main() {
         let readline = rl.readline(&prompt);
         match readline {
             Ok(line) => {
+                if line.len() == 0 {
+                    continue;
+                }
                 rl.add_history_entry(line.as_str());
-                if let Ok(mut pairs) = BEParser::parse(Rule::boolean_expression, line.as_str()) {
-                    let response = parse(pairs.next().unwrap().into_inner());
-                    println!("{:?}", response);
-                    println!("Validating: {:?}", response.solve(&registers, &memory));
-                } else {
-                    println!("syntax error");
+                match BEParser::parse(Rule::boolean_expression, line.as_str()) {
+                    Ok(mut pairs)   => {
+                        let response = parse(pairs.next().unwrap().into_inner());
+                        println!("{:?}", response);
+                        println!("Validating: {:?}", response.solve(&registers, &memory));
+                    },
+                    Err(parse_err)    => display_error(&line, parse_err),
                 };
-            }
+            },
             Err(ReadlineError::Eof) => {
                 println!("Quit!");
                 break;

@@ -8,7 +8,7 @@ extern crate pest_derive;
 
 use pest::error::Error as PestError;
 use pest::iterators::{Pair, Pairs};
-use pest::Parser;
+use pest::{Parser, RuleType};
 
 extern crate rustyline;
 
@@ -103,7 +103,7 @@ fn get_type_of<T>(_: &T) -> String {
     format!("{}", std::any::type_name::<T>())
 }
 
-fn display_error<T>(line: &String, err: PestError<T>) {
+fn display_error<T: RuleType>(line: &String, err: PestError<T>) {
     let (mark_str, msg) = match err.location {
         pest::error::InputLocation::Pos(x)  => {
             let mut pos_str = String::new();
@@ -121,12 +121,20 @@ fn display_error<T>(line: &String, err: PestError<T>) {
             (pos_str, format!("somewhere between position {} and {}", a, b))
         },
     };
-    println!(
-        "Syntax error:\n{}.\n{}\n{}",
-        line,
+    println!("   {}\n{} {}",
         mark_str,
+        format!("{}", Colour::Red.paint("Syntax error")),
         msg
     );
+    match err.variant {
+        pest::error::ErrorVariant::ParsingError {positives, negatives} => {
+            println!("{}", Colour::Fixed(240).paint(format!("hint: expected {:?}", positives)));
+        },
+        pest::error::ErrorVariant::CustomError { message } => {
+            println!("{}", Colour::Fixed(240).paint(format!("message: {}", message)));
+        },
+    };
+
 }
 
 fn main() {
@@ -141,12 +149,14 @@ fn main() {
                     continue;
                 }
                 rl.add_history_entry(line.as_str());
-                match BEParser::parse(Rule::boolean_expression, line.as_str()) {
+                match BEParser::parse(Rule::sentence, line.as_str()) {
                     Ok(mut pairs)   => {
                         let response = parse_boolex(pairs.next().unwrap().into_inner());
                         println!("{:?}", response);
                     },
-                    Err(parse_err)    => display_error(&line, parse_err),
+                    Err(parse_err)    => {
+                        display_error(&line, parse_err);
+                    },
                 };
             },
             Err(ReadlineError::Eof) => {
@@ -174,7 +184,7 @@ fn parse_operation(mut nodes: Pairs<Rule>) -> BooleanExpression {
     let node = nodes.next().unwrap();
     let lh = match node.as_rule() {
         Rule::register8 => parse_register(&node),
-        Rule::memory => parse_memory(&node),
+        Rule::memory_address => parse_memory(&node),
         v => panic!("unexpected node '{:?}' here.", v),
     };
     let middle_node = nodes.next().unwrap();

@@ -1,5 +1,31 @@
-Boolean Expression Parser
+Lexical Expression Parser
 =========================
+
+```
+✓ registers show
+✓ registers flush
+registers set A=0x01
+
+memory add subsystem minifb         // add minfb extension
+                     rom "program.bin" // add a ROM
+✓ memory show #0x1234 0xff            // start, length
+✓ memory load #0x1234 "program.bin"   // start, filename
+memory flush
+
+✓ run
+✓ run until false
+✓ run until #0x1234 = 0x12
+✓ run #0x1234
+✓ run #0x1234 until A >= 0x12
+
+boot                // load CP with address at #0xFFFC
+interrupt           // trigger an interrupt
+reboot              // re-init memory & registers
+
+state save "filename"     // save configuration, memory & registers
+state load "filename"     // load configuration, memory & registers
+```
+
 
 expression:
 -----------

@@ -13,7 +13,8 @@ use pest::{Parser, RuleType};
 extern crate rustyline;
 
 use rustyline::error::ReadlineError;
-use rustyline::Editor;
+use rustyline::{Context, Editor};
+use rustyline::Result as RustyResult;
 
 #[derive(Parser)]
 #[grammar = "boolean_expression.pest"]
@@ -140,7 +141,8 @@ fn display_error<T: RuleType>(err: PestError<T>) {
 fn main() {
     println!("{}", Colour::Green.paint("Welcome in Lepr 0.1.0"));
     let prompt = format!("{}", Colour::Fixed(148).bold().paint(">> "));
-    let mut rl = Editor::<()>::new();
+    let mut rl = Editor::<CommandLineCompleter>::new();
+    rl.set_helper(Some(CommandLineCompleter {}));
     loop {
         let readline = rl.readline(&prompt);
         match readline {
@@ -341,3 +343,18 @@ fn parse_value8(node: &Pair<Rule>) -> u8 {
 
     val[0] as u8
 }
+
+struct CommandLineCompleter {}
+
+impl rustyline::completion::Completer for CommandLineCompleter {
+    type Candidate = String;
+    fn complete(&self, line: &str, pos: usize, ctx: &Context) -> RustyResult<(usize, Vec<Self::Candidate>)> {
+        Ok((line.len(), vec![format!("PIKA"), format!("CHU")]))
+    }
+}
+
+impl rustyline::hint::Hinter for CommandLineCompleter { }
+
+impl rustyline::highlight::Highlighter for CommandLineCompleter { }
+
+impl rustyline::Helper for CommandLineCompleter { }

@@ -1,7 +1,11 @@
 WHITESPACE = _{ " " }
 sentence = _{ SOI ~ instruction ~ EOI }
 
-instruction = _{ registers_instruction | memory_instruction | run_instruction | help_instruction}
+instruction = { registers_instruction |
+    memory_instruction |
+    run_instruction |
+    help_instruction |
+    disassemble_instruction }
 
 registers_instruction = { ^"registers" ~ registers_action }
 registers_action = { registers_show | registers_flush }
@@ -14,7 +18,14 @@ memory_show = { ^"show" ~ memory_address ~ value8 }
 memory_load = { ^"load" ~ memory_address ~ filename }
 
 run_instruction = { ^"run until" ~ boolean_condition | ^"run" ~ memory_address ~ ^"until" ~ boolean_condition | ^"run" ~ memory_address | ^"run" }
-help_instruction = { ^"help" }
+
+disassemble_instruction = { ^"disassemble" ~ memory_address ~ ASCII_DIGIT+ }
+
+help_instruction = { help_registers | help_memory | help_run | help_disassemble | ^"help" }
+help_registers = { ^"help registers" }
+help_memory = { ^"help memory" }
+help_run = { ^"help run" }
+help_disassemble = { ^"help disassemble" }
 
 boolean_condition = { boolean | operation }
 

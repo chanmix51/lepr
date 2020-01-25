@@ -103,7 +103,7 @@ fn get_type_of<T>(_: &T) -> String {
     format!("{}", std::any::type_name::<T>())
 }
 
-fn display_error<T: RuleType>(line: &String, err: PestError<T>) {
+fn display_error<T: RuleType>(err: PestError<T>) {
     let (mark_str, msg) = match err.location {
         pest::error::InputLocation::Pos(x)  => {
             let mut pos_str = String::new();
@@ -139,7 +139,7 @@ fn display_error<T: RuleType>(line: &String, err: PestError<T>) {
 
 fn main() {
     println!("{}", Colour::Green.paint("Welcome in Lepr 0.1.0"));
-    let prompt = format!("{}", Colour::Yellow.paint(">> "));
+    let prompt = format!("{}", Colour::Fixed(148).bold().paint(">> "));
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(&prompt);
@@ -151,11 +151,10 @@ fn main() {
                 rl.add_history_entry(line.as_str());
                 match BEParser::parse(Rule::sentence, line.as_str()) {
                     Ok(mut pairs)   => {
-                        let response = parse_boolex(pairs.next().unwrap().into_inner());
-                        println!("{:?}", response);
+                        let response = parse_instruction(pairs.next().unwrap().into_inner());
                     },
                     Err(parse_err)    => {
-                        display_error(&line, parse_err);
+                        display_error(parse_err);
                     },
                 };
             },
@@ -169,6 +168,118 @@ fn main() {
             }
         }
     }
+}
+
+pub fn parse_instruction(mut nodes: Pairs<Rule>) {
+    let node = nodes.next().unwrap();
+    match node.as_rule() {
+        Rule::registers_instruction => println!("Registers instruction"),
+        Rule::memory_instruction    => println!("Memory instruction"),
+        Rule::run_instruction       => println!("Run instruction"),
+        Rule::help_instruction      => help(node.into_inner()),
+        Rule::disassemble_instruction => println!("Disassemble instruction"),
+        _   => {}, 
+    };
+}
+
+fn help(mut nodes: Pairs<Rule>) {
+    if let Some(node) = nodes.next() {
+        match node.as_rule() {
+            Rule::help_registers => {
+                println!("{}", Colour::Green.paint("Registers commands:"));
+                println!("");
+                println!("  registers show");
+                println!("          Dump the content of the CPU registers.");
+                println!("");
+                println!("  registers flush");
+                println!("          Reset the content of the CPU registers.");
+            },
+            Rule::help_memory   => {
+                println!("{}", Colour::Green.paint("Memory commands:"));
+                println!("  memory show ADDRESS LENGTH");
+                println!("          Show the content of the memory starting from ADDRESS.");
+                println!("          Example: {}", Colour::Fixed(240).paint("memory show #0x1234 100"));
+                println!("");
+                println!("   memory load ADDRESS \"filename.ext\" ");
+                println!("          Load a binary file at the selected address in memory.");
+                println!("          The content of the file is copied in the memory, so the memory has to");
+                println!("          be writable.");
+                println!("          Example: {}", Colour::Fixed(240).paint("memory load #0x1C00 \"program.bin\""));
+            },
+            Rule::help_run  => {
+                println!("{}", Colour::Green.paint("Execution commands:"));
+                println!("   run [ADDRESS] [until BOOLEAN_CONDITION]");
+                println!("          Launch execution of the program.");
+                println!("          Without further information, the execution goes on forever.");
+                println!("          There is one condition for the execution to stop: the Command Pointer");
+                println!("          to be at the exact same address before after an operand is executed.");
+                println!("          This is the case for the STP (stop) instruction but also after");
+                println!("          infinite loops like BRA -2 or a JMP at the exact same address.");
+                println!("          It is possible to give extra conditions to break the execution of the");
+                println!("          program, by example if it is desirable to execute step by step at a");
+                println!("          certain point by using the \"until\" keyword");
+                println!("");
+                println!("{}", Colour::White.bold().paint("Examples:"));
+                println!("  {}", Colour::Fixed(240).paint("run"));
+                println!("          Launch execution starting at the actual CP register position.");
+                println!("");
+                println!("  {}", Colour::Fixed(240).paint("run 0x1C00"));
+                println!("          Set the CP register at 0x1C00 and launch execution.");
+                println!("");
+                println!("{}", Colour::Green.paint("Boolean conditions"));
+                println!("  It is possible to stop the current execution process to check the state of");
+                println!("  the memory or CPU at this point. The execution is kept running until the");
+                println!("  given condition is evaluated to be true.");
+                println!("  It is possible to give any combination of >, <, <= >= or != from registers");
+                println!("  or from a memory location.");
+                println!("");
+                println!("{}", Colour::White.bold().paint("Examples:"));
+                println!("  {}", Colour::Fixed(240).paint("run until false"));
+                println!("    The instruction is executed, this is step by step mode.");
+                println!("");
+                println!("  {}", Colour::Fixed(240).paint("run until A = 0x12"));
+                println!("    The execution is launched until the A registers equals 0x12.");
+                println!("");
+                println!("  {}", Colour::Fixed(240).paint("run until 0x0200 > 0"));
+                println!("    The execution is launched until the given memory address at is greater");
+                println!("    than 0.");
+                println!("");
+                println!("  {}", Colour::Fixed(240).paint("run until S > 0x7f"));
+                println!("    The execution is launched until the Negative flag of the status register is");
+                println!("    set.");
+            },
+            Rule::help_disassemble => {
+                println!("{}", Colour::Green.paint("Registers command:"));
+                println!("");
+                println!("  disassemble ADDR LENGTH");
+                println!("         Disassemble start from address for the next \"operations\" instructions.");
+                println!("          Example: {}", Colour::Fixed(240).paint("disassemble 0x1C00 100"));
+                println!("          Disassemble 100 opcodes starting from address 0x1C00.");
+            },
+            _   => { },
+        };
+    } else {
+        println!("{}", Colour::Green.paint("Available commands:"));
+        println!("{}", Colour::White.bold().paint("Registers"));
+        println!("  registers show");
+        println!("          Dump the content of the CPU registers.");
+        println!("  registers flush");
+        println!("          Reset the content of the CPU registers.");
+        println!("{}", Colour::White.bold().paint("Memory"));
+        println!("   memory show ADDRESS LENGTH");
+        println!("          Show the content of the memory starting from ADDRESS.");
+        println!("   memory load ADDRESS \"filename.ext\" ");
+        println!("          Load a binary file at the selected address in memory.");
+        println!("{}", Colour::White.bold().paint("Execution"));
+        println!("   run [ADDRESS] [until BOOLEAN_CONDITION]");
+        println!("          Launch execution of the program.");
+        println!("{}", Colour::White.bold().paint("Disassembler"));
+        println!("   disassemble ADDRESS OPERATIONS");
+        println!("         Disassemble start from address for the next \"operations\" instructions.");
+        println!("{}", Colour::White.bold().paint("Help"));
+        println!("   help [TOPIC]");
+        println!("         Display informations about commands.");
+    };
 }
 
 pub fn parse_boolex(mut nodes: Pairs<Rule>) -> BooleanExpression {
